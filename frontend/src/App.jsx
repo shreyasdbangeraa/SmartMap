@@ -80,7 +80,16 @@ function App() {
           destination_address: destAddr 
         })
       });
+
+      // Handle raw 502/503 from Render's proxy before trying to parse JSON
+      if (!res.ok) {
+        if (res.status === 502) {
+          throw new Error("Backend server is currently starting up or offline. Please wait a moment and try again.");
+        }
+      }
+
       const data = await res.json();
+      
       if (res.ok) {
         setRoute(data);
         if (window.innerWidth <= 768) {
@@ -94,7 +103,7 @@ function App() {
         setError(data.detail || 'Route calculation failed');
       }
     } catch (err) {
-      setError('Backend server is not responding.');
+      setError(err.message || 'Backend server is not responding.');
     } finally {
       setLoading(false);
     }
