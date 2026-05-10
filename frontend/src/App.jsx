@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Polyline, useMap, Marker, Popup, Tooltip, CircleMarker } from 'react-leaflet';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -52,6 +52,17 @@ function App() {
   const [tagPosition, setTagPosition] = useState(null);
   const [isFormExpanded, setIsFormExpanded] = useState(true);
 
+  // Ensure form is always expanded on desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768) {
+        setIsFormExpanded(true);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const handleFindRoute = async () => {
     if (!startAddr || !destAddr) {
       setError("Please enter both starting and destination addresses.");
@@ -72,7 +83,9 @@ function App() {
       const data = await res.json();
       if (res.ok) {
         setRoute(data);
-        setIsFormExpanded(false); // Auto-hide form on mobile
+        if (window.innerWidth <= 768) {
+          setIsFormExpanded(false); // Auto-hide form only on mobile
+        }
         if (data.coordinates.length > 0) {
           setMapBounds(data.coordinates);
           setTagPosition(data.coordinates[Math.floor(data.coordinates.length / 2)]);
@@ -225,20 +238,31 @@ function App() {
           <ChangeView bounds={mapBounds} />
           {route && (
             <>
+              {/* Outer Border Line */}
+              <Polyline 
+                positions={route.coordinates} 
+                pathOptions={{ 
+                  color: '#00084d', /* Very dark navy border */
+                  weight: 10, 
+                  opacity: 1,
+                  lineJoin: 'round'
+                }} 
+              />
+              {/* Inner Route Line */}
               <Polyline 
                 positions={route.coordinates} 
                 eventHandlers={{ click: (e) => setTagPosition([e.latlng.lat, e.latlng.lng]) }}
                 pathOptions={{ 
-                  color: '#1a73e8', 
+                  color: '#0047ff', /* Distinctly darker blue */
                   weight: 6, 
-                  opacity: 0.9,
+                  opacity: 1,
                   lineJoin: 'round'
                 }} 
               />
               <CircleMarker 
                 center={route.start_coords} 
                 radius={8} 
-                pathOptions={{ color: 'white', fillColor: '#1a73e8', fillOpacity: 1, weight: 2 }}
+                pathOptions={{ color: 'white', fillColor: '#0047ff', fillOpacity: 1, weight: 2 }}
               >
                 <Popup>{route.start_name}</Popup>
               </CircleMarker>

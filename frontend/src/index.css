@@ -321,11 +321,11 @@ input:focus {
 }
 
 .google-time-tag {
-  background-color: #004ae8;
+  background-color: #0047ff;
   color: white;
   padding: 6px 14px;
   border-radius: 6px;
-  border: 2px solid #0b0f19;
+  border: 2px solid #001433;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -342,7 +342,7 @@ input:focus {
   transform: translateX(-50%);
   border-width: 8px 8px 0;
   border-style: solid;
-  border-color: #0b0f19 transparent transparent transparent;
+  border-color: #001433 transparent transparent transparent;
   z-index: 0;
 }
 
@@ -354,7 +354,7 @@ input:focus {
   transform: translateX(-50%);
   border-width: 6px 6px 0;
   border-style: solid;
-  border-color: #004ae8 transparent transparent transparent;
+  border-color: #0047ff transparent transparent transparent;
   z-index: 1;
 }
 
