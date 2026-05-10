@@ -50,6 +50,7 @@ function App() {
   const [route, setRoute] = useState(null);
   const [mapBounds, setMapBounds] = useState(null);
   const [tagPosition, setTagPosition] = useState(null);
+  const [isFormExpanded, setIsFormExpanded] = useState(true);
 
   const handleFindRoute = async () => {
     if (!startAddr || !destAddr) {
@@ -71,6 +72,7 @@ function App() {
       const data = await res.json();
       if (res.ok) {
         setRoute(data);
+        setIsFormExpanded(false); // Auto-hide form on mobile
         if (data.coordinates.length > 0) {
           setMapBounds(data.coordinates);
           setTagPosition(data.coordinates[Math.floor(data.coordinates.length / 2)]);
@@ -99,44 +101,58 @@ function App() {
               <Navigation className="logo-icon" size={32} color="var(--primary)" />
             </div>
             <div className="logo-text">
-              <h1>Global Route</h1>
+              <h1>Smart Map</h1>
               <p>Anywhere to Anywhere</p>
             </div>
           </div>
 
-          <div className="form-sections">
-            <div className="form-section">
-              <label className="section-label">
-                <span className="label-number">1</span>
-                Route Details
-              </label>
-              <div className="route-inputs">
-                <div className="route-connector" />
-                <div className="input-wrapper">
-                  <div className="dot-start" />
-                  <input 
-                    value={startAddr}
-                    onChange={(e) => setStartAddr(e.target.value)}
-                    placeholder="Starting address (e.g. New York, USA)"
-                  />
-                </div>
-                <div className="input-wrapper">
-                  <div className="dot-end" />
-                  <input 
-                    value={destAddr}
-                    onChange={(e) => setDestAddr(e.target.value)}
-                    placeholder="Destination address (e.g. Los Angeles, USA)"
-                  />
-                </div>
-              </div>
-              <button 
-                onClick={handleFindRoute}
-                disabled={loading}
-                className="btn-primary"
+          <AnimatePresence>
+            {isFormExpanded && (
+              <motion.div 
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                style={{ overflow: 'hidden' }}
+                className="form-sections"
               >
-                {loading ? <Loader2 className="animate-spin" size={18} /> : "Find Shortest Path"}
-              </button>
-            </div>
+                <div className="form-section">
+                  <label className="section-label">
+                    <span className="label-number">1</span>
+                    Route Details
+                  </label>
+                  <div className="route-inputs">
+                    <div className="route-connector" />
+                    <div className="input-wrapper">
+                      <div className="dot-start" />
+                      <input 
+                        value={startAddr}
+                        onChange={(e) => setStartAddr(e.target.value)}
+                        placeholder="Starting address (e.g. New York, USA)"
+                      />
+                    </div>
+                    <div className="input-wrapper">
+                      <div className="dot-end" />
+                      <input 
+                        value={destAddr}
+                        onChange={(e) => setDestAddr(e.target.value)}
+                        placeholder="Destination address (e.g. Los Angeles, USA)"
+                      />
+                    </div>
+                  </div>
+                  <button 
+                    onClick={handleFindRoute}
+                    disabled={loading}
+                    className="btn-primary"
+                  >
+                    {loading ? <Loader2 className="animate-spin" size={18} /> : "Find Shortest Path"}
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
+          <div className="mobile-drag-handle" onClick={() => setIsFormExpanded(!isFormExpanded)}>
+            <div className="drag-pill" />
           </div>
         </div>
 
