@@ -49,6 +49,7 @@ function App() {
   const [error, setError] = useState(null);
   const [route, setRoute] = useState(null);
   const [mapBounds, setMapBounds] = useState(null);
+  const [tagPosition, setTagPosition] = useState(null);
 
   const handleFindRoute = async () => {
     if (!startAddr || !destAddr) {
@@ -72,6 +73,7 @@ function App() {
         setRoute(data);
         if (data.coordinates.length > 0) {
           setMapBounds(data.coordinates);
+          setTagPosition(data.coordinates[Math.floor(data.coordinates.length / 2)]);
         }
       } else {
         setError(data.detail || 'Route calculation failed');
@@ -91,48 +93,50 @@ function App() {
         animate={{ x: 0 }}
         className="sidebar"
       >
-        <div className="logo-section">
-          <div className="logo-icon-wrapper">
-            <Navigation className="logo-icon" size={32} color="var(--primary)" />
-          </div>
-          <div className="logo-text">
-            <h1>Global Route</h1>
-            <p>Anywhere to Anywhere</p>
-          </div>
-        </div>
-
-        <div className="form-sections">
-          <div className="form-section">
-            <label className="section-label">
-              <span className="label-number">1</span>
-              Route Details
-            </label>
-            <div className="route-inputs">
-              <div className="route-connector" />
-              <div className="input-wrapper">
-                <div className="dot-start" />
-                <input 
-                  value={startAddr}
-                  onChange={(e) => setStartAddr(e.target.value)}
-                  placeholder="Starting address (e.g. New York, USA)"
-                />
-              </div>
-              <div className="input-wrapper">
-                <div className="dot-end" />
-                <input 
-                  value={destAddr}
-                  onChange={(e) => setDestAddr(e.target.value)}
-                  placeholder="Destination address (e.g. Los Angeles, USA)"
-                />
-              </div>
+        <div className="top-bubble">
+          <div className="logo-section">
+            <div className="logo-icon-wrapper">
+              <Navigation className="logo-icon" size={32} color="var(--primary)" />
             </div>
-            <button 
-              onClick={handleFindRoute}
-              disabled={loading}
-              className="btn-primary"
-            >
-              {loading ? <Loader2 className="animate-spin" size={18} /> : "Find Shortest Path"}
-            </button>
+            <div className="logo-text">
+              <h1>Global Route</h1>
+              <p>Anywhere to Anywhere</p>
+            </div>
+          </div>
+
+          <div className="form-sections">
+            <div className="form-section">
+              <label className="section-label">
+                <span className="label-number">1</span>
+                Route Details
+              </label>
+              <div className="route-inputs">
+                <div className="route-connector" />
+                <div className="input-wrapper">
+                  <div className="dot-start" />
+                  <input 
+                    value={startAddr}
+                    onChange={(e) => setStartAddr(e.target.value)}
+                    placeholder="Starting address (e.g. New York, USA)"
+                  />
+                </div>
+                <div className="input-wrapper">
+                  <div className="dot-end" />
+                  <input 
+                    value={destAddr}
+                    onChange={(e) => setDestAddr(e.target.value)}
+                    placeholder="Destination address (e.g. Los Angeles, USA)"
+                  />
+                </div>
+              </div>
+              <button 
+                onClick={handleFindRoute}
+                disabled={loading}
+                className="btn-primary"
+              >
+                {loading ? <Loader2 className="animate-spin" size={18} /> : "Find Shortest Path"}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -207,6 +211,7 @@ function App() {
             <>
               <Polyline 
                 positions={route.coordinates} 
+                eventHandlers={{ click: (e) => setTagPosition([e.latlng.lat, e.latlng.lng]) }}
                 pathOptions={{ 
                   color: '#1a73e8', 
                   weight: 6, 
@@ -226,19 +231,20 @@ function App() {
                 <Popup>{route.dest_name}</Popup>
               </Marker>
 
-              {/* Middle of Route Time Tag */}
-              <Marker 
-                position={route.coordinates[Math.floor(route.coordinates.length / 2)]} 
-                icon={L.divIcon({
-                  className: 'custom-time-tag-wrapper',
-                  html: `<div class="google-time-tag">
-                           <div class="time-text">${route.est_time_min >= 60 ? `${Math.floor(route.est_time_min / 60)} hr ${Math.round(route.est_time_min % 60)} min` : `${Math.round(route.est_time_min)} min`}</div>
-                           <div class="dist-text">${route.distance_km} km</div>
-                         </div>`,
-                  iconSize: [80, 40],
-                  iconAnchor: [40, 20]
-                })}
-              />
+              {/* Movable Route Time Tag */}
+              {tagPosition && (
+                <Marker 
+                  position={tagPosition} 
+                  icon={L.divIcon({
+                    className: 'custom-time-tag-wrapper',
+                    html: `<div class="google-time-tag">
+                             <div class="time-text">${route.est_time_min >= 60 ? `${Math.floor(route.est_time_min / 60)} hr ${Math.round(route.est_time_min % 60)} min` : `${route.est_time_min.toFixed(1)} min`}</div>
+                           </div>`,
+                    iconSize: [80, 36],
+                    iconAnchor: [40, 42]
+                  })}
+                />
+              )}
             </>
           )}
         </MapContainer>
