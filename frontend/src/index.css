@@ -312,6 +312,37 @@ input:focus {
   width: 100%;
   background: #0b0f19 !important;
 }
+
+/* Google Maps style time tag */
+.custom-time-tag-wrapper {
+  background: transparent;
+  border: none;
+}
+
+.google-time-tag {
+  background-color: #0b57d0;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  white-space: nowrap;
+}
+
+.google-time-tag .time-text {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.google-time-tag .dist-text {
+  font-size: 11px;
+  opacity: 0.9;
+  font-weight: 500;
+}
+
 .animate-spin {
   animation: spin 1s linear infinite;
 }

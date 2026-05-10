@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapContainer, TileLayer, Polyline, useMap, Marker, Popup, Tooltip } from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, useMap, Marker, Popup, Tooltip, CircleMarker } from 'react-leaflet';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Navigation, 
@@ -20,7 +20,16 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-const API_BASE = 'http://localhost:8000/api';
+const redIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+const API_BASE = import.meta.env.VITE_API_URL || 'https://smartmap-backend-s4ml.onrender.com/api';
 
 // Component to fly map to new bounds or center
 function ChangeView({ bounds, center }) {
@@ -199,25 +208,37 @@ function App() {
               <Polyline 
                 positions={route.coordinates} 
                 pathOptions={{ 
-                  color: 'var(--primary)', 
-                  weight: 5, 
-                  opacity: 0.8,
+                  color: '#1a73e8', 
+                  weight: 6, 
+                  opacity: 0.9,
                   lineJoin: 'round'
                 }} 
               />
-              <Marker position={route.start_coords}>
-                <Tooltip permanent direction="top" offset={[0, -10]}>
-                  <div style={{ fontWeight: 'bold', fontSize: '12px' }}>START: {route.start_name.split(',')[0]}</div>
-                </Tooltip>
+              <CircleMarker 
+                center={route.start_coords} 
+                radius={8} 
+                pathOptions={{ color: 'white', fillColor: '#1a73e8', fillOpacity: 1, weight: 2 }}
+              >
                 <Popup>{route.start_name}</Popup>
-              </Marker>
+              </CircleMarker>
 
-              <Marker position={route.dest_coords}>
-                <Tooltip permanent direction="top" offset={[0, -10]}>
-                  <div style={{ fontWeight: 'bold', fontSize: '12px' }}>END: {route.dest_name.split(',')[0]}</div>
-                </Tooltip>
+              <Marker position={route.dest_coords} icon={redIcon}>
                 <Popup>{route.dest_name}</Popup>
               </Marker>
+
+              {/* Middle of Route Time Tag */}
+              <Marker 
+                position={route.coordinates[Math.floor(route.coordinates.length / 2)]} 
+                icon={L.divIcon({
+                  className: 'custom-time-tag-wrapper',
+                  html: `<div class="google-time-tag">
+                           <div class="time-text">${route.est_time_min >= 60 ? `${Math.floor(route.est_time_min / 60)} hr ${Math.round(route.est_time_min % 60)} min` : `${Math.round(route.est_time_min)} min`}</div>
+                           <div class="dist-text">${route.distance_km} km</div>
+                         </div>`,
+                  iconSize: [80, 40],
+                  iconAnchor: [40, 20]
+                })}
+              />
             </>
           )}
         </MapContainer>
