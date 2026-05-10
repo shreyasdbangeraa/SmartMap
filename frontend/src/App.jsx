@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { MapContainer, TileLayer, Polyline, useMap, Marker, Popup, Tooltip, CircleMarker } from 'react-leaflet';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -299,6 +300,7 @@ function App() {
         </MapContainer>
       </main>
     </div>
+    <Analytics />
   );
 }
 
