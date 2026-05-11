@@ -43,7 +43,7 @@ async def find_route(request: RouteRequest):
             'User-Agent': 'AI-Route-Planner-App/1.0'
         }
         
-        response = requests.get(osrm_url, headers=headers)
+        response = requests.get(osrm_url, headers=headers, timeout=10)
         
         if response.status_code != 200:
             raise HTTPException(status_code=502, detail="Failed to retrieve route from OSRM.")
@@ -76,6 +76,7 @@ async def find_route(request: RouteRequest):
     except HTTPException:
         raise
     except Exception as e:
+        print(f"Backend error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

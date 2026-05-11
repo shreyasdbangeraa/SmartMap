@@ -30,7 +30,8 @@ const redIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://smartmap-backend-s4ml.onrender.com/api';
+const API_BASE = import.meta.env.VITE_API_URL || 
+  (window.location.hostname === 'localhost' ? 'http://localhost:8000/api' : 'https://smartmap-backend-s4ml.onrender.com/api');
 
 // Component to fly map to new bounds or center
 function ChangeView({ bounds, center }) {
@@ -111,7 +112,8 @@ function App() {
   };
 
   return (
-    <div className="app-container">
+    <>
+      <div className="app-container">
       {/* Sidebar */}
       <motion.aside 
         initial={{ x: -400 }}
@@ -299,8 +301,9 @@ function App() {
           )}
         </MapContainer>
       </main>
-    </div>
-    <Analytics />
+      </div>
+      <Analytics />
+    </>
   );
 }
 
