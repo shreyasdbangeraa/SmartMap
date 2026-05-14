@@ -9,7 +9,13 @@ import {
   Clock, 
   MoveHorizontal,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Menu,
+  Bookmark,
+  History,
+  MapPin,
+  X,
+  LocateFixed
 } from 'lucide-react';
 import L from 'leaflet';
 
@@ -52,18 +58,38 @@ function App() {
   const [route, setRoute] = useState(null);
   const [mapBounds, setMapBounds] = useState(null);
   const [tagPosition, setTagPosition] = useState(null);
-  const [isFormExpanded, setIsFormExpanded] = useState(true);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [showTraffic, setShowTraffic] = useState(false);
+  const [avoidTolls, setAvoidTolls] = useState(false);
+  const [allRoutes, setAllRoutes] = useState([]);
+  const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
+  const [userLocation, setUserLocation] = useState(null);
+  const [flyToUser, setFlyToUser] = useState(false);
 
-  // Ensure form is always expanded on desktop
+  // Live GPS Tracking
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth > 768) {
-        setIsFormExpanded(true);
-      }
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    if ("geolocation" in navigator) {
+      const watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setUserLocation([latitude, longitude]);
+        },
+        (error) => console.error("Geolocation error:", error),
+        { enableHighAccuracy: true }
+      );
+      return () => navigator.geolocation.clearWatch(watchId);
+    }
   }, []);
+
+  const handleLocateMe = () => {
+    if (userLocation) {
+      setFlyToUser(true);
+      // Reset after a moment so it can be triggered again
+      setTimeout(() => setFlyToUser(false), 500);
+    } else {
+      alert("Locating you... Please ensure location permissions are enabled.");
+    }
+  };
 
   const handleFindRoute = async () => {
     if (!startAddr || !destAddr) {
@@ -79,27 +105,27 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           start_address: startAddr, 
-          destination_address: destAddr 
+          destination_address: destAddr,
+          avoid_tolls: avoidTolls
         })
       });
 
-      // Handle raw 502/503 from Render's proxy before trying to parse JSON
       if (!res.ok) {
         if (res.status === 502) {
-          throw new Error("Backend server is currently starting up or offline. Please wait a moment and try again.");
+          throw new Error("Backend server is starting up. Please try again in 5 seconds.");
         }
       }
 
       const data = await res.json();
+      console.log("Route Data Received:", data);
       
       if (res.ok) {
-        setRoute(data);
-        if (window.innerWidth <= 768) {
-          setIsFormExpanded(false); // Auto-hide form only on mobile
-        }
-        if (data.coordinates.length > 0) {
-          setMapBounds(data.coordinates);
-          setTagPosition(data.coordinates[Math.floor(data.coordinates.length / 2)]);
+        setAllRoutes(data.routes);
+        setSelectedRouteIndex(0);
+        setRoute(data.routes[0]); // Keep for backward compatibility/legacy components
+        setIsDropdownOpen(false); // Hide dropdown on success
+        if (data.routes[0].coordinates.length > 0) {
+          setMapBounds(data.routes[0].coordinates);
         }
       } else {
         setError(data.detail || 'Route calculation failed');
@@ -111,128 +137,230 @@ function App() {
     }
   };
 
-  return (
-    <>
-      <div className="app-container">
-      {/* Sidebar */}
-      <motion.aside 
-        initial={{ x: -400 }}
-        animate={{ x: 0 }}
-        className="sidebar"
-      >
-        <div className="top-bubble">
-          <div className="logo-section">
-            <div className="logo-icon-wrapper">
-              <Navigation className="logo-icon" size={32} color="var(--primary)" />
-            </div>
-            <div className="logo-text">
-              <h1>Smart Map</h1>
-              <p>Anywhere to Anywhere</p>
-            </div>
-          </div>
+  const currentRoute = allRoutes[selectedRouteIndex] || route;
 
-          <AnimatePresence>
-            {isFormExpanded && (
-              <motion.div 
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                style={{ overflow: 'hidden' }}
-                className="form-sections"
-              >
-                <div className="form-section">
-                  <label className="section-label">
-                    <span className="label-number">1</span>
-                    Route Details
-                  </label>
-                  <div className="route-inputs">
-                    <div className="route-connector" />
-                    <div className="input-wrapper">
-                      <div className="dot-start" />
-                      <input 
-                        value={startAddr}
-                        onChange={(e) => setStartAddr(e.target.value)}
-                        placeholder="Starting address (e.g. New York, USA)"
-                      />
-                    </div>
-                    <div className="input-wrapper">
-                      <div className="dot-end" />
-                      <input 
-                        value={destAddr}
-                        onChange={(e) => setDestAddr(e.target.value)}
-                        placeholder="Destination address (e.g. Los Angeles, USA)"
-                      />
-                    </div>
-                  </div>
-                  <button 
-                    onClick={handleFindRoute}
-                    disabled={loading}
-                    className="btn-primary"
-                  >
-                    {loading ? <Loader2 className="animate-spin" size={18} /> : "Find Shortest Path"}
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          
-          <div className="mobile-drag-handle" onClick={() => setIsFormExpanded(!isFormExpanded)}>
-            <div className="drag-pill" />
+  return (
+    <div className="app-container">
+      {/* Narrow Left Nav */}
+      <nav className="left-nav">
+        <div className="nav-top-btn" onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
+          <Menu size={24} />
+        </div>
+        
+        <div className="nav-item">
+          <Navigation size={22} color="var(--primary)" />
+          <span>Ask Maps</span>
+        </div>
+        
+        <div className="nav-item">
+          <Bookmark size={22} />
+          <span>Saved</span>
+        </div>
+        
+        <div className="nav-item">
+          <History size={22} />
+          <span>Recents</span>
+        </div>
+
+        <div className="nav-spacer" />
+        
+        <div className="nav-item">
+          <div style={{ 
+            width: 32, 
+            height: 32, 
+            borderRadius: '50%', 
+            background: '#1a73e8', 
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 14,
+            fontWeight: 500
+          }}>
+            S
+          </div>
+        </div>
+      </nav>
+
+      {/* Floating Search & Routing */}
+      <div className="search-container">
+        <div className="search-bar">
+          <div className="search-btn-icon" onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
+            <Menu size={20} />
+          </div>
+          <input 
+            placeholder="Search Smart Map" 
+            value={destAddr}
+            onFocus={() => setIsDropdownOpen(true)}
+            readOnly
+          />
+          <div className="search-btn-icon">
+            <Search size={20} />
+          </div>
+          <div className="nav-arrow-btn" onClick={handleFindRoute}>
+            <Navigation size={18} fill="white" />
           </div>
         </div>
 
-        {/* Dynamic Panels */}
-        <div className="dynamic-panel-container">
-          <AnimatePresence mode="wait">
-            {error ? (
-              <motion.div 
-                key="error"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="error-alert"
-              >
-                <AlertCircle className="error-icon" size={20} />
-                <p className="error-text">{error}</p>
-              </motion.div>
-            ) : route ? (
-              <motion.div 
-                key="stats"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="stats-panel"
-              >
-                <div className="stats-header">
-                  <span className="stats-label">Trip Stats</span>
-                  <div className="optimal-badge">OPTIMAL</div>
+        <AnimatePresence>
+          {isDropdownOpen && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="routing-card"
+            >
+              <div className="routing-tabs">
+                <Navigation size={18} className="routing-tab-icon" />
+                <MapIcon 
+                  size={18} 
+                  className={`routing-tab-icon ${showTraffic ? 'active-tab' : ''}`} 
+                  onClick={() => setShowTraffic(!showTraffic)}
+                  color={showTraffic ? 'var(--primary)' : 'currentColor'}
+                  fill={showTraffic ? 'rgba(26, 115, 232, 0.1)' : 'none'}
+                />
+                <MoveHorizontal 
+                  size={18} 
+                  className={`routing-tab-icon ${avoidTolls ? 'active-tab' : ''}`} 
+                  onClick={() => setAvoidTolls(!avoidTolls)}
+                  color={avoidTolls ? '#f4b400' : 'currentColor'}
+                />
+                <History size={18} className="routing-tab-icon" />
+                <Search size={18} className="routing-tab-icon" />
+                <div style={{ marginLeft: 'auto' }}>
+                  <X size={18} className="routing-tab-icon" onClick={() => setIsDropdownOpen(false)} />
                 </div>
-                <div className="stats-grid">
-                  <div className="stat-item">
-                    <div className="stat-icon-label">
-                      <MoveHorizontal size={12} />
-                      <span>DISTANCE</span>
-                    </div>
-                    <span className="stat-value">{route.distance_km} km</span>
-                  </div>
-                  <div className="stat-item">
-                    <div className="stat-icon-label">
-                      <Clock size={12} />
-                      <span>EST. TIME</span>
-                    </div>
-                    <span className="stat-value">{route.est_time_min > 60 ? `${Math.round(route.est_time_min / 60)} hr ${Math.round(route.est_time_min % 60)} min` : `${route.est_time_min} min`}</span>
-                  </div>
+              </div>
+
+              <div className="routing-inputs">
+                <div className="input-group">
+                  <div className="route-dot" />
+                  <input 
+                    placeholder="Enter starting point" 
+                    value={startAddr}
+                    onChange={(e) => setStartAddr(e.target.value)}
+                  />
                 </div>
-              </motion.div>
-            ) : (
-              <div className="empty-stats">
-                <Search size={32} color="var(--text-muted)" />
-                <p>Plan a route anywhere in the world</p>
+                <div className="input-group">
+                  <MapPin size={18} className="route-pin" />
+                  <input 
+                    placeholder="Enter destination" 
+                    value={destAddr}
+                    onChange={(e) => setDestAddr(e.target.value)}
+                  />
+                </div>
+                
+                {/* Toll Toggle Option */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: -4 }}>
+                  <input 
+                    type="checkbox" 
+                    id="avoidTolls" 
+                    checked={avoidTolls} 
+                    onChange={(e) => setAvoidTolls(e.target.checked)}
+                    style={{ width: 14, height: 14 }}
+                  />
+                  <label htmlFor="avoidTolls" style={{ fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }}>
+                    Avoid Toll Roads
+                  </label>
+                </div>
+              </div>
+
+              {error && (
+                <div style={{ padding: '0 16px', color: '#d93025', fontSize: 12 }}>
+                  {error}
+                </div>
+              )}
+
+              <button className="find-route-btn" onClick={handleFindRoute} disabled={loading}>
+                {loading ? "Searching..." : "Find Route"}
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Trip Information Panel */}
+      <AnimatePresence>
+        {currentRoute && !isDropdownOpen && (
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="trip-info-card"
+          >
+            <div className="trip-info-header">
+              <span className="trip-info-label">{currentRoute.summary || 'Trip Information'}</span>
+              {selectedRouteIndex === 0 && <span className="optimal-badge">OPTIMAL</span>}
+            </div>
+            
+            <div className="trip-main-stat">
+              <Clock size={18} color="#188038" />
+              <span className="trip-time">
+                {currentRoute.est_time_min > 60 ? `${Math.round(currentRoute.est_time_min / 60)} hr ${Math.round(currentRoute.est_time_min % 60)} min` : `${currentRoute.est_time_min} min`}
+              </span>
+            </div>
+
+            <div className="trip-sub-stat" style={{ marginBottom: 8 }}>
+              {currentRoute.distance_km} km • via {currentRoute.summary || 'shortest path'}
+            </div>
+
+            {/* Toll Status Badge */}
+            {currentRoute.has_toll && (
+              <div style={{ 
+                background: '#fef7e0', 
+                color: '#b06000', 
+                padding: '8px 12px', 
+                borderRadius: '8px', 
+                fontSize: '12px', 
+                fontWeight: 600,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
+                marginBottom: 8,
+                border: '1px solid #ffe168'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <AlertCircle size={14} />
+                  <span>Toll road detected</span>
+                </div>
+                <div style={{ fontSize: '14px', color: '#1f1f1f', fontWeight: 700 }}>
+                  Est. Toll: ₹{currentRoute.toll_price}
+                </div>
               </div>
             )}
-          </AnimatePresence>
-        </div>
-      </motion.aside>
+
+            {avoidTolls && (
+              <div style={{ 
+                background: '#e6f4ea', 
+                color: '#137333', 
+                padding: '6px 10px', 
+                borderRadius: '6px', 
+                fontSize: '11px', 
+                fontWeight: 600,
+                marginBottom: 8
+              }}>
+                ✓ Avoiding all toll roads
+              </div>
+            )}
+
+            {showTraffic && (
+              <div className="traffic-legend">
+                <div className="legend-item">
+                  <div className="legend-line" style={{ background: '#0047ff' }} />
+                  <span>Low</span>
+                </div>
+                <div className="legend-item">
+                  <div className="legend-line" style={{ background: '#ffa500' }} />
+                  <span>Moderate</span>
+                </div>
+                <div className="legend-item">
+                  <div className="legend-line" style={{ background: '#ff0000' }} />
+                  <span>Heavy</span>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Map View */}
       <main className="map-view">
@@ -241,69 +369,103 @@ function App() {
           zoom={2} 
           scrollWheelZoom={true}
           zoomControl={false}
+          style={{ height: '100%', width: '100%' }}
         >
           <TileLayer
             url="https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
             attribution='&copy; Google Maps'
             subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
           />
-          <ChangeView bounds={mapBounds} />
-          {route && (
-            <>
-              {/* Outer Border Line */}
-              <Polyline 
-                positions={route.coordinates} 
-                pathOptions={{ 
-                  color: '#00084d', /* Very dark navy border */
-                  weight: 10, 
-                  opacity: 1,
-                  lineJoin: 'round'
-                }} 
-              />
-              {/* Inner Route Line */}
-              <Polyline 
-                positions={route.coordinates} 
-                eventHandlers={{ click: (e) => setTagPosition([e.latlng.lat, e.latlng.lng]) }}
-                pathOptions={{ 
-                  color: '#0047ff', /* Distinctly darker blue */
-                  weight: 6, 
-                  opacity: 1,
-                  lineJoin: 'round'
-                }} 
-              />
-              <CircleMarker 
-                center={route.start_coords} 
-                radius={8} 
-                pathOptions={{ color: 'white', fillColor: '#0047ff', fillOpacity: 1, weight: 2 }}
-              >
-                <Popup>{route.start_name}</Popup>
-              </CircleMarker>
+          <ChangeView bounds={mapBounds} center={flyToUser ? userLocation : null} />
+          
+          {/* User Live Location Marker */}
+          {userLocation && (
+            <Marker 
+              position={userLocation} 
+              zIndexOffset={1000}
+              icon={L.divIcon({
+                className: 'user-location-wrapper',
+                html: `<div class="user-location-dot">
+                         <div class="user-location-pulse"></div>
+                       </div>`,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+              })}
+            />
+          )}
 
-              <Marker position={route.dest_coords} icon={redIcon}>
-                <Popup>{route.dest_name}</Popup>
-              </Marker>
+          {allRoutes.map((r, rIdx) => {
+            const isSelected = rIdx === selectedRouteIndex;
+            const midPoint = r.coordinates[Math.floor(r.coordinates.length / 2)];
+            
+            return (
+              <React.Fragment key={r.id}>
+                {/* Base Route Line */}
+                <Polyline 
+                  positions={r.coordinates} 
+                  eventHandlers={{ click: () => setSelectedRouteIndex(rIdx) }}
+                  pathOptions={{ 
+                    color: isSelected ? '#00084d' : '#70757a', 
+                    weight: isSelected ? 10 : 6, 
+                    opacity: isSelected ? 0.6 : 0.4, 
+                    lineJoin: 'round' 
+                  }} 
+                />
 
-              {/* Movable Route Time Tag */}
-              {tagPosition && (
+                {/* Selected Route Traffic Segments */}
+                {isSelected && (
+                  showTraffic && r.segments ? r.segments.map((seg, sIdx) => (
+                    <Polyline 
+                      key={`seg-${sIdx}`}
+                      positions={seg.coords} 
+                      pathOptions={{ 
+                        color: seg.traffic === 'high' ? '#ff0000' : seg.traffic === 'medium' ? '#ffa500' : '#0047ff',
+                        weight: 6, opacity: 1, lineJoin: 'round'
+                      }} 
+                    />
+                  )) : (
+                    <Polyline 
+                      positions={r.coordinates} 
+                      pathOptions={{ color: '#0047ff', weight: 6, opacity: 1, lineJoin: 'round' }} 
+                    />
+                  )
+                )}
+
+                {/* Route Floating Tag */}
                 <Marker 
-                  position={tagPosition} 
+                  position={midPoint} 
+                  eventHandlers={{ click: () => setSelectedRouteIndex(rIdx) }}
                   icon={L.divIcon({
                     className: 'custom-time-tag-wrapper',
-                    html: `<div class="google-time-tag">
-                             <div class="time-text">${route.est_time_min >= 60 ? `${Math.floor(route.est_time_min / 60)} hr ${Math.round(route.est_time_min % 60)} min` : `${route.est_time_min.toFixed(1)} min`}</div>
+                    html: `<div class="google-time-tag ${isSelected ? 'active-tag' : 'alt-tag'}">
+                             <div class="time-text">
+                                ${r.est_time_min >= 60 ? `${Math.floor(r.est_time_min / 60)}h ${Math.round(r.est_time_min % 60)}m` : `${Math.round(r.est_time_min)}m`}
+                             </div>
+                             ${!r.has_toll ? '<div class="toll-label">No tolls</div>' : ''}
                            </div>`,
-                    iconSize: [80, 36],
+                    iconSize: [80, 42],
                     iconAnchor: [40, 42]
                   })}
                 />
-              )}
+              </React.Fragment>
+            );
+          })}
+
+          {currentRoute && (
+            <>
+              <CircleMarker center={allRoutes[0].coordinates[0]} radius={8} pathOptions={{ color: 'white', fillColor: '#0047ff', fillOpacity: 1, weight: 2 }} />
+              <Marker position={allRoutes[0].coordinates[allRoutes[0].coordinates.length - 1]} icon={redIcon} />
             </>
           )}
         </MapContainer>
+
+        {/* Floating Locate Button */}
+        <button className="locate-btn" onClick={handleLocateMe} title="Show my location">
+          <LocateFixed size={24} color={userLocation ? "var(--primary)" : "#5f6368"} />
+        </button>
       </main>
-      </div>
       <Analytics />
-    </>
+    </div>
   );
 }
 
