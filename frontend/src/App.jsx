@@ -15,7 +15,8 @@ import {
   History,
   MapPin,
   X,
-  LocateFixed
+  LocateFixed,
+  Target
 } from 'lucide-react';
 import L from 'leaflet';
 
@@ -100,12 +101,23 @@ function App() {
     setLoading(true);
     setError(null);
     try {
+      // Handle "Your Location" by passing actual coordinates
+      let finalStart = startAddr;
+      let finalDest = destAddr;
+
+      if (startAddr === "Your Location" && userLocation) {
+        finalStart = `${userLocation[0]},${userLocation[1]}`;
+      }
+      if (destAddr === "Your Location" && userLocation) {
+        finalDest = `${userLocation[0]},${userLocation[1]}`;
+      }
+
       const res = await fetch(`${API_BASE}/find-route`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          start_address: startAddr, 
-          destination_address: destAddr,
+          start_address: finalStart, 
+          destination_address: finalDest,
           avoid_tolls: avoidTolls
         })
       });
@@ -239,7 +251,21 @@ function App() {
                     placeholder="Enter starting point" 
                     value={startAddr}
                     onChange={(e) => setStartAddr(e.target.value)}
+                    style={{ paddingRight: '36px' }}
                   />
+                  <div 
+                    className="use-my-location-icon" 
+                    title="Use my location"
+                    onClick={() => {
+                      if (userLocation) {
+                        setStartAddr("Your Location");
+                      } else {
+                        alert("Locating you... please wait.");
+                      }
+                    }}
+                  >
+                    <Target size={16} color={startAddr === "Your Location" ? "var(--primary)" : "#5f6368"} />
+                  </div>
                 </div>
                 <div className="input-group">
                   <MapPin size={18} className="route-pin" />

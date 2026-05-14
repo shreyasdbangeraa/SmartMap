@@ -191,6 +191,7 @@ body, html, #root {
   border-radius: 8px;
   padding: 0 12px;
   height: 40px;
+  position: relative;
 }
 
 .input-group input {
@@ -444,6 +445,20 @@ body, html, #root {
 
 .locate-btn:active {
   transform: scale(0.9);
+}
+
+.use-my-location-icon {
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.use-my-location-icon:hover {
+  background: #e8f0fe;
 }
 
 /* Mobile Adjustments */
